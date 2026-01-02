@@ -1,4 +1,4 @@
-BYD KDS — Operasyon & Fabrika Karar Destek Sistemi
+BYD KDS — Taktiksel & Stratejik  Fabrika Karar Destek Sistemi
 Bu proje, Türkiye genelinde yeni yatırım planlayan BYD için geliştirilmiş, veri odaklı bir Karar Destek Sistemi (KDS) simülasyonudur. Sistem, hem operasyonel verimliliği takip eder hem de yeni fabrika lokasyonları için analitik hesaplamalar yapar.
 
 🚀 Öne Çıkan Özellikler
