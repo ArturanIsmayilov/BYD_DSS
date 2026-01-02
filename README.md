@@ -10,7 +10,6 @@ Bu proje, Türkiye genelinde yeni yatırım planlayan BYD için geliştirilmiş,
 * **KPI Takibi:** Teslimat performansları, gecikme süreleri ve stok durumları şehir/model bazlı olarak anlık izlenebilir.
 * **Dinamik Raporlama:** Analiz sonuçları PDF veya CSV formatında dışa aktarılabilir.
 
-![Status](https://img.shields.io/badge/Status-Completed-success?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
 ## 🛠️ Teknik Altyapı
 
