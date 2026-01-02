@@ -1,6 +1,6 @@
 // ============================================================
 //  BYD KDS — Taktiksel & Stratejik Fabrika Karar Destek Sistemi
-//  ÇALIŞAN KODA SİMÜLASYON EKLENDİ + KARAKTER DÜZELTMELİ
+//  ÇALIŞAN KODA SİMÜLASYON EKLENDİ 
 // ============================================================
 
 const express = require("express");
