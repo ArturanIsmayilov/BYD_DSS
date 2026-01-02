@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>BYD KDS - Operasyon & Siting Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* TEMEL STİLLER (SENİN KODUNLA AYNI) */
+    body { margin:0; font-family: "Inter","Segoe UI",sans-serif; background: radial-gradient(circle at top left,#0b1220,#0f1724); color:#e6eef8; overflow:hidden; }
+    .container { display:flex; height:100vh; gap:12px; padding:12px; box-sizing:border-box; }
+    .left { width:35%; min-width:340px; background:rgba(10,16,28,.98); border-radius:12px; padding:16px; box-shadow:0 6px 24px rgba(0,0,0,.5); overflow:auto; scrollbar-width:thin; scrollbar-color:#233 #0b1220; }
+    .right { width:65%; position:relative; border-radius:12px; overflow:hidden; }
+    #map { position:absolute; inset:0; border-radius:12px; }
+    h1 { font-size:1.35rem; font-weight:600; color:#0ea5a4; text-shadow:0 0 6px rgba(14,165,164,.5); margin:0 0 12px 0; }
+    .controls { margin-bottom:14px; }
+    label { display:block; font-size:.9rem; margin-bottom:6px; color:#bcd; }
+    select, input[type="text"], input[type="number"] { /* Input type'ları belirtildi */
+        width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.08); background:#031223; color:#e6eef8; transition:.25s; box-sizing: border-box;
+    }
+    input[type="range"] { width: 100%; cursor: pointer; } /* Slider stili */
+    select:focus, input:focus { outline:none; border-color:#0ea5a4; box-shadow:0 0 4px #0ea5a4; }
+    button { padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; transition:.3s; }
+    .btn-primary { background:linear-gradient(90deg,#0ea5a4,#00c6cf); color:#001a1a; border:none; }
+    .btn-primary:hover { transform:scale(1.02); box-shadow:0 0 10px #0ea5a4; }
+    .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,.1); color:#e6eef8; }
+    .btn-ghost:hover { border-color:#0ea5a4; color:#0ea5a4; }
+    .section-title { color:#0ea5a4; font-weight:600; border-bottom:1px solid rgba(255,255,255,.1); margin-top:12px; padding-bottom:4px; }
+
+     /* KPI (SENİN KODUNLA AYNI - Sparkline YOK) */
+    .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 10px 0 12px; }
+    .kpi { background: #07182a; padding: 10px 12px; border-radius: 8px; box-shadow: inset 0 0 10px rgba(14, 165, 164, .2); transition: .3s; }
+    .kpi:hover { transform: translateY(-3px); background: #0a2136; }
+    .kpi .title { font-size: .85rem; color: #a9c1d8; margin-bottom: 3px; }
+    .kpi .value { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+    /* Diğer stiller (SENİN KODUNLA AYNI) */
+    .site-list { margin-top:10px; }
+    .site-item { padding:10px; border-radius:8px; background:rgba(7,20,33,.9); margin-bottom:8px; border-left:4px solid transparent; transition:.3s; cursor:pointer; }
+    .site-item:hover { border-left-color:#0ea5a4; background:#0e1b2c; }
+    .score { font-weight:700; color:#ffdd57; float:right; }
+    .small { font-size:.85rem; color:#a9c1d8; }
+    .legend { position:absolute; left:12px; bottom:12px; z-index:999; background:rgba(7,18,26,.95); padding:8px; border-radius:6px; font-size:.85rem; color:#cfe; box-shadow:0 0 10px rgba(0,0,0,.5); }
+    .cards { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
+    .card { background:#0b1526;
+    border:1px solid rgba(255,255,255,.05);
+    border-radius:10px;
+    padding:10px;
+    height: 280px; /* Sabit yükseklik - SORUN BURADA */
+    position: relative;
+    overflow: hidden;}
+    .card h4 { margin:0 0 8px 0; font-size:1rem; color:#cfe; }
+    .card canvas { width: 100%;} /* Grafik boyutu ayarlandı */
+    .card {
+    background:#0b1526;
+    border:1px solid rgba(255,255,255,.05);
+    border-radius:10px;
+    padding:10px;
+    height: 355px; /* Sabit yükseklik verdik */
+    position: relative; /* Chart.js'in doğru konumlanması için */
+    overflow: hidden; /* Taşmaları engellemek için eklenebilir */
+}
+    .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap: wrap;} /* Wrap eklendi */
+    .tab-btn { flex: 1 1 auto; text-align:center; padding:8px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,.1); background:#07182a; color:#cfe; font-weight:600; transition:.25s; font-size: 0.75rem; min-width: 80px;} /* Boyut ayarlandı */
+    .tab-btn.active { background:#0ea5a4; color:#001a1a; box-shadow:0 0 8px #0ea5a4; }
+    .section { display:none; }
+    .section.active { display:block; }
+    .detail-table-container { max-height: 70vh; overflow-y: auto; margin-top: 10px; }
+    .detail-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .detail-table th, .detail-table td { padding: 6px 4px; border: 1px solid rgba(255,255,255,.1); text-align: left; }
+    .detail-table th { background: #0a2136; color: #0ea5a4; position: sticky; top: 0; }
+    .detail-table tr:nth-child(even) { background: #0b1526; }
+    .detail-table td[data-label="Risk"] { color: #f43f5e; }
+    .detail-table td[data-label="Teşvik"] { color: #34d399; }
+    .detail-table td[data-label="Maliyet"] { color: #f59e0b; }
+
+    /* ARAŞTIRMA/DETAY PANELİ STİLLERİ (SENİN KODUNLA AYNI) */
+    .btn-back { background: #0a2136; color: #0ea5a4; border: 1px solid #0ea5a4; width: 100%; margin-bottom: 10px; }
+    .btn-back:hover { background: #0ea5a4; color: #001a1a; }
+    .detail-panel-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 15px; font-size: 0.9rem; }
+    .detail-panel-body .m-item { background: #07182a; padding: 8px; border-radius: 6px; }
+    .detail-panel-body .m-title { font-size: 0.8rem; color: #a9c1d8; margin-bottom: 3px; }
+    .detail-panel-body .m-value { font-weight: 600; }
+    .detail-panel-body .m-value.risk { color: #f43f5e; }
+    .detail-panel-body .m-value.incentive { color: #34d399; }
+    .detail-panel-body .m-value.cost { color: #f59e0b; }
+    .siting-subpanel { display: none; }
+    .siting-subpanel.active { display: block; }
+
+    /* YENİ: Simülasyon Paneli Stilleri */
+    .sim-group { margin-bottom: 15px; background: #0b1526; padding: 10px; border-radius: 8px; border: 1px solid rgba(14,165,164,.2);}
+    .sim-group h4 { margin: 0 0 10px 0; color: #cde; font-size: 0.95rem;}
+    .sim-group label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-size: 0.85rem;}
+    .sim-group label span:last-child { font-weight: bold; color: #ffdd57; min-width: 40px; text-align: right; }
+    #simResultsList .site-item { background: rgba(11, 21, 38, 0.9); }
+    #simResultsList .score-change { font-size: 0.8rem; margin-left: 10px; }
+    #simResultsList .score-change.positive { color: #34d399; }
+    #simResultsList .score-change.negative { color: #f43f5e; }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="left">
+      <h1>BYD KDS — Operasyon & Fabrika Karar Destek Sistemi</h1>
+
+      <div class="tabs">
+        <div class="tab-btn active" data-target="analizSection">🏠 Ana Sayfa</div>
+        <div class="tab-btn" data-target="sitingSection">🏭 Fabrika Analizi</div>
+        <div class="tab-btn" data-target="simulationSection">🔮 Simülasyon</div> <div class="tab-btn" data-target="detailsSection">📑 Detaylı Veri</div>
+        <div class="tab-btn" data-target="chartsSection">📈 Grafikler</div>
+        <div class="tab-btn" data-target="reportingSection">📊 Raporlama</div>
+        <div class="tab-btn" data-target="dealersSection">🏪 Bayiler</div>
+      </div>
+
+      <div id="analizSection" class="section active">
+        <div class="controls">
+          <label for="cityFilter">Şehir Filtrele</label>
+          <select id="cityFilter"><option value="">Tüm Şehirler</option></select>
+          <label for="modelFilter">Araç Modeli</label>
+          <select id="modelFilter"><option value="">Tüm Modeller</option></select>
+        </div>
+        <div class="section-title">KPI Göstergeleri</div>
+        <div class="kpi-row">
+            <div class="kpi"><div class="title">Toplam Sipariş</div><div class="value" id="kpiOrders">—</div></div>
+            <div class="kpi"><div class="title">Ortalama Gecikme (dk)</div><div class="value" id="kpiDelay">—</div></div>
+            <div class="kpi"><div class="title">On-Time Teslim (%)</div><div class="value" id="kpiOnTime">—</div></div>
+            <div class="kpi"><div class="title">Toplam Stok (Adet)</div><div class="value" id="kpiStock">—</div></div>
+        </div>
+        <h3 style="margin-top:6px;">Hızlı Erişim: Aday Lokasyonlar (sıralı)</h3>
+        <div id="siteList" class="site-list"></div>
+        <footer>Demo veriler sahte - KDS özellikleri uyarınca (analitik, interaktif, veri+model tabanlı).</footer>
+      </div>
+
+      <div id="sitingSection" class="section">
+        <div id="sitingListPanel" class="siting-subpanel active">
+            <div class="section-title">Fabrika Yeri Kriter Ağırlıkları</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px; font-size:0.8rem; text-align:center; color:#a9c1d8;">
+               <span>Talep</span><span>Arsa</span><span>İşgücü</span><span>Altyapı</span><span>Tedarik</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+              <input type="number" step="0.01" id="wDemand" placeholder="0.30" value="0.30" />
+              <input type="number" step="0.01" id="wLand" placeholder="0.15" value="0.15" />
+              <input type="number" step="0.01" id="wLabor" placeholder="0.10" value="0.10" />
+              <input type="number" step="0.01" id="wInfra" placeholder="0.15" value="0.15" />
+              <input type="number" step="0.01" id="wSupplier" placeholder="0.10" value="0.10" />
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="runSiting" class="btn-primary" style="flex:1;">Analizi Başlat</button>
+              <button id="refresh" class="btn-ghost" style="flex:1;">Yenile</button>
+            </div>
+            <div class="section-title">Fabrika Yeri Analizi Sonuçları</div>
+            <div id="siteList_siting" class="site-list"></div>
+        </div>
+        <div id="sitingDetailPanel" class="siting-subpanel">
+            <button id="btnBackToList" class="btn-back"> &larr; Listeye Geri Dön</button>
+            <h2 id="detailPanelTitle" style="color:#0ea5a4; margin-top:0;">Detay</h2>
+            <div id="detailPanelBody" class="detail-panel-body"></div>
+        </div>
+      </div>
+
+      <div id="simulationSection" class="section">
+          <div class="section-title">Simülasyon Parametreleri</div>
+
+          <div class="sim-group">
+              <h4>Kriter Ağırlıklarını Simüle Et ("What-If" Analizi)</h4>
+              <label for="sim_wDemand">Talep Ağırlığı: <span id="sim_wDemand_val">0.30</span></label>
+              <input type="range" id="sim_wDemand" min="0" max="1" step="0.05" value="0.30" oninput="updateSliderLabel('sim_wDemand')">
+
+              <label for="sim_wLand">Arsa Maliyeti Ağırlığı: <span id="sim_wLand_val">0.15</span></label>
+              <input type="range" id="sim_wLand" min="0" max="1" step="0.05" value="0.15" oninput="updateSliderLabel('sim_wLand')">
+              
+              <label for="sim_wLabor">İşgücü Ağırlığı: <span id="sim_wLabor_val">0.10</span></label>
+              <input type="range" id="sim_wLabor" min="0" max="1" step="0.05" value="0.10" oninput="updateSliderLabel('sim_wLabor')">
+
+              <label for="sim_wInfra">Altyapı Ağırlığı: <span id="sim_wInfra_val">0.15</span></label>
+              <input type="range" id="sim_wInfra" min="0" max="1" step="0.05" value="0.15" oninput="updateSliderLabel('sim_wInfra')">
+
+              <label for="sim_wSupplier">Tedarikçi Yakınlığı Ağırlığı: <span id="sim_wSupplier_val">0.10</span></label>
+              <input type="range" id="sim_wSupplier" min="0" max="1" step="0.05" value="0.10" oninput="updateSliderLabel('sim_wSupplier')">
+              <small style="color:#a9c1d8; display:block; text-align:center;">(Önem derecesini ayarlayın)</small>
+          </div>
+
+          <div class="sim-group">
+              <h4>Bölgesel Arsa Maliyet Değişimini Simüle Et</h4>
+               <label for="sim_region">Etkilenecek Bölge:</label>
+               <select id="sim_region">
+                   <option value="">Bölge Seçilmedi</option>
+                   <option value="Marmara">Marmara</option>
+                   <option value="Ege">Ege</option>
+                   <option value="İç Anadolu">İç Anadolu</option>
+                   <option value="Akdeniz">Akdeniz</option>
+                   <option value="Karadeniz">Karadeniz</option>
+                   <option value="Güneydoğu">Güneydoğu</option>
+               </select>
+               <label for="sim_costChangePct">Maliyet Değişim Oranı (%):</label>
+               <input type="number" id="sim_costChangePct" placeholder="Örn: 20 (artış) veya -10 (azalış)" value="0">
+          </div>
+
+          <button id="runSimulation" class="btn-primary" style="width:100%; margin-top:10px;">Simülasyonu Çalıştır</button>
+
+          <div class="section-title" style="margin-top: 15px;">Simülasyon Sonuçları (Yeni Sıralama)</div>
+          <div id="simResultsList" class="site-list">
+              <p style="text-align:center; color:#a9c1d8;">Simülasyonu çalıştırmak için yukarıdaki parametreleri ayarlayın.</p>
+          </div>
+      </div>
+
+      <div id="detailsSection" class="section">
+        <div class="section-title">Tüm Aday Sahalar (Karşılaştırmalı Veri Görünümü)</div>
+        <div class="detail-table-container">
+          <table class="detail-table">
+            <thead>
+              <tr><th>Saha</th><th>Şehir</th><th>Maliyet (₺/m²)</th><th>İşgücü</th><th>Altyapı</th><th>Lojistik</th><th>Tedarik (km)</th><th>Stok</th><th>Talep</th><th>Deprem (%)</th><th>Teşvik</th></tr>
+            </thead>
+            <tbody id="detailTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+<div id="reportingSection" class="section">
+    <div class="section-title">Hazırlanan Raporlar</div>
+    <div class="controls" style="display:flex; gap:10px; margin-bottom:15px;">
+        <button onclick="downloadReport('csv')" class="btn-ghost" style="flex:1;">📂 CSV Olarak İndir</button>
+        <button onclick="downloadReport('pdf')" class="btn-primary" style="flex:1;">📄 PDF Olarak İndir</button>
+    </div>
+    <div id="reportList" class="site-list">
+        <p style="text-align:center; color:#a9c1d8;">Henüz rapora eklenmiş bir sonuç yok.</p>
+    </div>
+</div>
+      <div id="chartsSection" class="section">
+        <div class="section-title">Grafikler</div>
+        <div class="cards">
+          <div class="card"><h4 style="margin: 0;">Model Bazlı Satışlar</h4><canvas id="modelChart"></canvas></div>
+          <div class="card"><h4 style="margin: 0;">Şehir Bazlı Sipariş</h4><canvas id="cityChart"></canvas></div>
+        </div>
+      </div>
+
+      <div id="dealersSection" class="section">
+        <div class="section-title">Bayiler</div>
+        <div id="dealerList_menu" class="site-list"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div id="map"></div>
+      
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    let selectedReports = [];
+
+function addToReport(name, score, cost) {
+    selectedReports.push({ name, score, cost });
+    updateReportUI();
+    alert(name + " rapora eklendi.");
+}
+
+function updateReportUI() {
+    const reportList = document.getElementById('reportList');
+    if (selectedReports.length === 0) return;
+    
+    reportList.innerHTML = selectedReports.map((r, index) => `
+        <div class="site-item">
+            <span style="float:right; cursor:pointer; color:#f43f5e;" onclick="removeFromReport(${index})">🗑️</span>
+            <b>${r.name}</b><br>
+            <span class="small">Skor: ${r.score} | Maliyet: ${fmtTL(r.cost)}</span>
+        </div>
+    `).join('');
+}
+
+function removeFromReport(index) {
+    selectedReports.splice(index, 1);
+    updateReportUI();
+}
+
+async function downloadReport(format) {
+    if (selectedReports.length === 0) return alert("Önce rapora bir şeyler eklemelisiniz!");
+
+    if (format === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // PDF Başlığı
+        doc.setFontSize(18);
+        doc.text("BYD KDS - Simulasyon Sonuc Raporu", 10, 20);
+        doc.setFontSize(12);
+        doc.text(`Tarih: ${new Date().toLocaleString()}`, 10, 30);
+        doc.line(10, 35, 200, 35); // Çizgi çek
+
+        // Verileri Yazdır
+        let y = 45;
+        selectedReports.forEach((r, index) => {
+            if (y > 280) { doc.addPage(); y = 20; } // Sayfa dolarsa yeni sayfa aç
+            doc.text(`${index + 1}. Lokasyon: ${r.name}`, 10, y);
+            doc.text(`   Skor: ${r.score} | Maliyet: ${r.cost} TL`, 10, y + 7);
+            y += 20;
+        });
+
+        doc.save("BYD_KDS_Analiz_Raporu.pdf");
+    } else {
+        // CSV indirme mantığı aynen kalsın
+        const response = await fetch(`/api/export_report?format=${format}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: selectedReports })
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `BYD_KDS_Rapor.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+}
+
+    // API adresi
+    const apiBase = location.origin.includes('file:') ? 'http://localhost:3000' : location.origin;
+    async function fetchJson(path, options = {}){
+        const response = await fetch(apiBase + path, options);
+        if (!response.ok) {
+           const errorText = await response.text();
+           console.error(`API Error (${response.status}) [${options.method || 'GET'} ${path}]:`, errorText);
+           throw new Error(`API isteği başarısız: ${response.status}`);
+        }
+        const text = await response.text();
+        // Boş cevapları veya geçerli olmayan JSON'ları kontrol et
+        if (!text) {
+             console.warn(`API'dan boş cevap geldi: ${path}`);
+             return null; // Veya {} gibi uygun bir varsayılan
+        }
+        try { return JSON.parse(text); }
+        catch (e) { console.error(`API'dan geçerli JSON gelmedi: ${path}`, text); return null; }
+    }
+
+
+    // HARİTA
+    const turkeyBounds = L.latLngBounds([35.5, 25.5], [42.5, 45.0]);
+    const map = L.map('map', { zoomControl: true, minZoom: 6, maxZoom: 12, maxBounds: turkeyBounds, maxBoundsViscosity: 1.0 }).setView([39.0, 35.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    const dealerLayer = L.layerGroup().addTo(map);
+    const siteLayer = L.layerGroup().addTo(map);
+
+    // UI Referansları
+    const cityFilter = document.getElementById('cityFilter');
+    const modelFilter = document.getElementById('modelFilter');
+    const siteList = document.getElementById('siteList');
+    const kpiOrders = document.getElementById('kpiOrders');
+    const kpiDelay = document.getElementById('kpiDelay');
+    const kpiOnTime = document.getElementById('kpiOnTime');
+    const kpiStock = document.getElementById('kpiStock');
+    const siteListSiting = document.getElementById('siteList_siting');
+    const dealerListMenu = document.getElementById('dealerList_menu');
+    const detailTableBody = document.getElementById('detailTableBody');
+    const sitingListPanel = document.getElementById('sitingListPanel');
+    const sitingDetailPanel = document.getElementById('sitingDetailPanel');
+    const detailPanelTitle = document.getElementById('detailPanelTitle');
+    const detailPanelBody = document.getElementById('detailPanelBody');
+    const simResultsList = document.getElementById('simResultsList'); // Yeni Simülasyon listesi
+
+    let modelChart, cityChart;
+    const dealerMarkers = new Map();
+    const siteMarkers = new Map();
+    let baseSiteScores = []; // Simülasyon karşılaştırması için
+
+    // Sekme Değiştirme
+    function switchTab(targetId) {
+        document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+        const tabButton = document.querySelector(`.tab-btn[data-target="${targetId}"]`);
+        if (tabButton) tabButton.classList.add('active');
+        const section = document.getElementById(targetId);
+        if (section) section.classList.add('active');
+    }
+    document.querySelectorAll('.tab-btn').forEach(tab=>{
+        tab.addEventListener('click', ()=>{
+            showSitingList(); // Başka sekmeye geçince detay panelini kapat
+            switchTab(tab.dataset.target);
+        });
+    });
+
+    // Formatlama
+    const fmtTL = v => v ? Number(v).toLocaleString('tr-TR', {maximumFractionDigits:0}) + ' ₺' : 'N/A';
+    const fmtPctDirect = v => (v !== null && v !== undefined) ? Math.round(Number(v)) + '%' : 'N/A';
+
+    // Araştırma Paneli
+    function showSitingList() {
+        sitingDetailPanel.classList.remove('active');
+        sitingListPanel.classList.add('active');
+    }
+    async function showSitingDetail(siteId) {
+        switchTab('sitingSection'); // Otomatik sekme değiştir
+        sitingListPanel.classList.remove('active');
+        sitingDetailPanel.classList.add('active');
+        detailPanelTitle.innerText = "Yükleniyor...";
+        detailPanelBody.innerHTML = "Lütfen bekleyin...";
+        try {
+            const s = await fetchJson(`/api/site_detail/${siteId}`);
+            if (!s) throw new Error("Veri bulunamadı.");
+            detailPanelTitle.innerText = s.site_name;
+            detailPanelBody.innerHTML = `
+                <div class="m-item"><div class="m-title">Şehir</div><div class="m-value">${s.city_name}</div></div>
+                <div class="m-item"><div class="m-title">Arsa Maliyeti (m²)</div><div class="m-value cost">${fmtTL(s.land_cost_per_m2)}</div></div>
+                <div class="m-item"><div class="m-title">İşgücü Endeksi</div><div class="m-value">${s.labor_index} / 100</div></div>
+                <div class="m-item"><div class="m-title">Altyapı Endeksi</div><div class="m-value">${s.altyapi_endeksi} / 100</div></div>
+                <div class="m-item"><div class="m-title">Lojistik Endeksi</div><div class="m-value">${s.logistics_index} / 100</div></div>
+                <div class="m-item"><div class="m-title">Tedarikçi Mesafesi</div><div class="m-value">${s.supplier_proximity_km} km</div></div>
+                <div class="m-item"><div class="m-title">Teşvik Bölgesi</div><div class="m-value incentive">${s.zone_name}</div></div>
+                <div class="m-item"><div class="m-title">Vergi İndirimi</div><div class="m-value incentive">${fmtPctDirect(s.tax_rebate_pct)}</div></div>
+                <div class="m-item"><div class="m-title">Deprem Riski</div><div class="m-value risk">${fmtPctDirect(s.earthquake_risk_pct)}</div></div>
+                <div class="m-item"><div class="m-title">Sel Riski</div><div class="m-value risk">${fmtPctDirect(s.flood_risk_pct)}</div></div>
+                <div class="m-item"><div class="m-title">Şehir Talebi (Pazar)</div><div class="m-value">${s.demand_index || 'N/A'} / 10</div></div>
+                <div class="m-item"><div class="m-title">Enerji Kapasitesi</div><div class="m-value">${s.energy_capacity_mw} MW</div></div>`;
+            if (s.lat && s.lon) map.flyTo([s.lat, s.lon], 9);
+        } catch (error) {
+             console.error("Detay gösterilemedi:", error);
+             detailPanelTitle.innerText = "Hata";
+             detailPanelBody.innerHTML = "Detaylar yüklenirken bir sorun oluştu.";
+        }
+    }
+
+
+    // KPI Yükleme
+    async function loadKPIs() {
+        try {
+            // API artık { overall: {...}, byCity: [...] } formatında dönüyor
+            const kpiData = await fetchJson('/api/kpis');
+            if (!kpiData || !kpiData.overall) { throw new Error('KPI verisi alınamadı veya formatı yanlış.'); }
+            const kpis = kpiData.overall; // Genel toplamları kullan
+            kpiOrders.innerText = kpis.total_orders ?? 'N/A';
+            kpiDelay.innerText = kpis.avg_delay?.toFixed(2) ?? 'N/A';
+            kpiOnTime.innerText = kpis.on_time_rate?.toFixed(1) + '%' ?? 'N/A';
+            kpiStock.innerText = kpis.total_stock ?? 'N/A';
+        } catch (error) {
+            console.error("KPI yüklenemedi:", error);
+            kpiOrders.innerText = kpiDelay.innerText = kpiOnTime.innerText = kpiStock.innerText = 'Hata';
+        }
+    }
+    async function loadPotentialCities() {
+    try {
+        const potentialCities = await fetchJson('/api/potential_cities');
+        potentialLayer.clearLayers();
+
+        potentialCities.forEach(city => {
+            // Bayi olmayan yerler için küçük gri daireler
+            const marker = L.circleMarker([city.lat, city.lon], {
+                radius: 4,
+                color: '#7f8c8d', // Gri kenarlık
+                fillColor: '#bdc3c7', // Açık gri dolgu
+                fillOpacity: 0.6,
+                weight: 1
+            }).addTo(potentialLayer);
+
+            // Üstüne tıklandığında açılacak Popup ve Simülasyon Butonu
+            marker.bindPopup(`
+                <div style="font-family:sans-serif;">
+                    <b style="font-size:14px;">${city.name}</b><br>
+                    <span style="color:#666;">Potansiyel Bayi Alanı</span><br><br>
+                    <button onclick="startCitySimulation('${city.name}')" 
+                            style="width:100%; padding:5px; cursor:pointer; background:#0ea5a4; color:white; border:none; border-radius:4px; font-weight:bold;">
+                        Burada Bayi Olsa?
+                    </button>
+                </div>
+            `);
+        });
+    } catch (e) { console.error("Potansiyel şehir yükleme hatası:", e); }
+}
+
+// Simülasyon sekmesine yönlendirme fonksiyonu
+function startCitySimulation(cityName) {
+    switchTab('simulationSection'); 
+    console.log(cityName + " için analiz başlatıldı.");
+}
+
+function startCitySimulation(cityName) {
+    switchTab('simulationSection'); 
+    console.log(cityName + " için simülasyon başlatıldı.");
+}
+    // Ana Yükleme
+    async function loadAndRender() {
+      console.log("loadAndRender başlıyor...");
+      try {
+          const [dealers, models] = await Promise.all([
+              fetchJson('/api/dealers'),
+              fetchJson('/api/vehicle_model').catch(()=>null)
+          ]);
+          console.log("Bayiler ve Modeller yüklendi.");
+
+          const cities = [...new Set(dealers.map(d=>d.city))].sort();
+          cityFilter.innerHTML = '<option value="">Tüm Şehirler</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+          modelFilter.innerHTML = '<option value="">Tüm Modeller</option>';
+          if(models) modelFilter.innerHTML += models.map(m=>`<option value="${m.id}">${m.model_name}</option>`).join('');
+          const potentialLayer = L.layerGroup().addTo(map); // Gri noktalar için yeni katman
+          dealerLayer.clearLayers();
+          dealerListMenu.innerHTML = '';
+          dealers.forEach(d=>{
+              const popupContent = `<b>${d.name}</b><br>Şehir: ${d.city}<br>Bölge: ${d.region}`;
+              const marker = L.circleMarker([d.lat, d.lon], { radius:7, color:'#2196f3', fillColor:'#2196f3', fillOpacity:0.9 }).bindPopup(popupContent);
+              marker.addTo(dealerLayer);
+              dealerMarkers.set(d.id || d.name, marker);
+              const row = document.createElement('div');
+              row.className = 'site-item';
+              row.innerHTML = `<b>${d.name}</b> <span class="small">— ${d.city}</span>`;
+              row.onclick = ()=>{ map.flyTo([d.lat, d.lon], 10); marker.openPopup(); };
+              dealerListMenu.appendChild(row);
+          });
+
+          console.log("KPI, Grafik ve Detaylar yükleniyor...");
+          // Hata olasılığını azaltmak için ayrı ayrı yükle
+          await loadKPIs();
+          await renderCharts();
+          await loadDetails();
+          await loadPotentialCities();
+          console.log("KPI, Grafik ve Detaylar yüklendi.");
+
+      } catch (error) {
+          console.error("Ana veri yüklenemedi:", error);
+          alert("Uygulama yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.");
+      }
+      console.log("loadAndRender bitti.");
+    }
+
+    // Detaylı Veri Tablosu
+    async function loadDetails() {
+        detailTableBody.innerHTML = '<tr><td colspan="10" style="text-align:center;">Yükleniyor...</td></tr>';
+        try {
+            const details = await fetchJson('/api/all_site_details');
+            if(!details || details.length === 0) { detailTableBody.innerHTML = '<tr><td colspan="10">Veri yok.</td></tr>'; return; }
+            // index.html içindeki loadDetails fonksiyonunun içi:
+
+detailTableBody.innerHTML = details.map(s => `
+    <tr>
+        <td>${s.site_name}</td>
+        <td>${s.city_name}</td>
+        <td>${fmtTL(s.land_cost_per_m2)}</td>
+        <td>${s.labor_index}</td>
+        <td>${s.altyapi_endeksi}</td>
+        <td>${s.logistics_index}</td>
+        <td>${s.supplier_proximity_km} km</td>
+        
+        <td style="font-weight:bold; color:${(s.city_stock || 0) < 50 ? '#f43f5e' : '#34d399'}">
+            ${s.city_stock !== undefined ? s.city_stock : 0} Adet
+        </td>
+
+        <td>${s.demand_index || 'N/A'}</td>
+        <td>${fmtPctDirect(s.earthquake_risk_pct)}</td>
+        <td>${s.zone_name}</td>
+    </tr>`).join('');
+        } catch (error) {
+             console.error("Detay tablosu yüklenemedi:", error);
+             detailTableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: #f43f5e;">Veri yüklenirken hata oluştu.</td></tr>';
+        }
+    }
+
+    // Grafikler
+    async function renderCharts(){
+      
+      console.log("renderCharts başlıyor...");
+      try {
+          // Model verisini çek
+          const modelData = await fetchJson('/api/sales_by_model');
+          if (!modelData) throw new Error("Model satış verisi alınamadı.");
+
+          // Model Chart
+          const mLabels = modelData.map(x=>x.model);
+          const mValues = modelData.map(x=>x.orders);
+          if(modelChart) modelChart.destroy();
+          const ctx1 = document.getElementById('modelChart').getContext('2d');
+          if (ctx1) { // Canvas var mı kontrol et
+              modelChart = new Chart(ctx1, { type: 'bar', data: { labels: mLabels, datasets: [{ label: 'Teslim Edilen Sipariş', data: mValues, backgroundColor: '#0ea5a4' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color:'#cfe'} }, y: { ticks: { color:'#cfe'} } } } });
+          }
+
+          // Şehir bazlı sipariş için KPI verisini kullan
+          const kpiData = await fetchJson('/api/kpis'); // Tekrar çekmek yerine saklanabilir de
+          if (kpiData && kpiData.byCity){
+              const cLabels = kpiData.byCity.map(x=>x.city);
+              const cValues = kpiData.byCity.map(x=>x.total_orders);
+              if(cityChart) cityChart.destroy();
+              const ctx2 = document.getElementById('cityChart').getContext('2d');
+              if(ctx2) { // Canvas var mı kontrol et
+                  cityChart = new Chart(ctx2, { type: 'doughnut', data: { labels: cLabels, datasets: [{ data: cValues }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position:'bottom', labels:{ color:'#cfe' } } } } });
+              }
+          }
+          console.log("Grafikler çizildi.");
+
+      } catch(error) {
+          console.error("Grafikler yüklenemedi:", error);
+          // İsteğe bağlı: Grafik alanlarında hata mesajı göster
+          const ctx1 = document.getElementById('modelChart');
+          if (ctx1) ctx1.parentElement.innerHTML = '<p style="color: red; text-align: center;">Grafik yüklenemedi.</p>';
+          const ctx2 = document.getElementById('cityChart');
+          if (ctx2) ctx2.parentElement.innerHTML = '<p style="color: red; text-align: center;">Grafik yüklenemedi.</p>';
+      }
+    }
+
+
+    // Fabrika Yeri Analizi (Siting)
+    async function runSiting() {
+      console.log("runSiting başlıyor...");
+      siteList.innerHTML = siteListSiting.innerHTML = '<p style="text-align:center; color:#a9c1d8;">Analiz çalıştırılıyor...</p>';
+      siteLayer.clearLayers();
+      siteMarkers.clear();
+
+      const wDemand   = document.getElementById('wDemand').value || '0.30';
+      const wLand     = document.getElementById('wLand').value || '0.15';
+      const wLabor    = document.getElementById('wLabor').value || '0.10';
+      const wInfra    = document.getElementById('wInfra').value || '0.15';
+      const wSupplier = document.getElementById('wSupplier').value || '0.10';
+      const qs = `?w_demand=${wDemand}&w_land=${wLand}&w_labor=${wLabor}&w_infra=${wInfra}&w_supplier=${wSupplier}`;
+
+      try {
+          const payload = await fetchJson('/api/score_sites' + qs);
+          if (!payload || !payload.results) throw new Error("API'dan geçerli sonuç gelmedi.");
+          console.log("Skorlar alındı:", payload.results.length);
+
+          baseSiteScores = payload.results.map(s => ({ id: s.id, score: s.score }));
+
+          siteList.innerHTML = ''; // Temizle
+          siteListSiting.innerHTML = ''; // Temizle
+
+          if (payload.results.length === 0) {
+              siteList.innerHTML = siteListSiting.innerHTML = '<p style="text-align:center; color:#a9c1d8;">Analiz sonucu bulunamadı.</p>';
+              return;
+          }
+
+          payload.results.forEach(s=>{
+              const color = (s.score ?? 0) >= 70 ? '#16a34a' : ((s.score ?? 0) >= 45 ? '#f59e0b' : '#ef4444');
+              const cost = Number(s.land_cost_per_m2).toFixed(0); // NaN kontrolü server.js'de yapılıyor varsayımı
+              const infraPct = s.altyapi_endeksi;
+
+              // Lat/Lon kontrolü ekle
+              if (s.lat != null && s.lon != null) {
+                  const marker = L.marker([s.lat, s.lon], { title: s.name });
+                  marker.addTo(siteLayer);
+                  marker.on('click', () => showSitingDetail(s.id));
+                  const radius = 5000 + 25000 * ((s.score || 0)/100);
+                  L.circle([s.lat, s.lon], { radius: radius, color, fillOpacity: 0.1, weight:1 }).addTo(siteLayer);
+                  siteMarkers.set(s.id, marker);
+              } else {
+                  console.warn(`Site ID ${s.id} (${s.name}) için konum bilgisi eksik.`);
+              }
+
+
+              const itemHTML = `<div><b>${s.name}</b><span class="score">${s.score?.toFixed(2) ?? 'N/A'}</span></div><div class="small">Arsa: ${fmtTL(s.land_cost_per_m2)} • İşgücü: ${s.labor_index} • Altyapı: ${infraPct}</div>`;
+
+              const createItemElement = (htmlTarget) => {
+                  const el = document.createElement('div');
+                  el.className = 'site-item';
+                  el.innerHTML = itemHTML;
+                  el.onclick = () => showSitingDetail(s.id);
+                  htmlTarget.appendChild(el);
+              };
+              createItemElement(siteList);
+              createItemElement(siteListSiting);
+          });
+
+          // Haritayı sitelere göre ayarla
+           try {
+              if (siteLayer.getLayers().length > 0) {
+                  map.fitBounds(siteLayer.getBounds().pad(0.1));
+              } else if (dealerLayer.getLayers().length > 0) {
+                   // Site yoksa bayilere odaklan
+                   map.fitBounds(dealerLayer.getBounds().pad(0.3));
+              }
+           } catch(e) { console.warn("Harita fitBounds hatası:", e); }
+
+      } catch (error) {
+          console.error("Fabrika analizi başarısız:", error);
+          siteList.innerHTML = siteListSiting.innerHTML = '<p style="text-align:center; color: #f43f5e;">Analiz sırasında hata oluştu.</p>';
+      }
+      console.log("runSiting bitti.");
+    }
+
+    // === Simülasyon Fonksiyonları ===
+    function updateSliderLabel(sliderId) {
+        const slider = document.getElementById(sliderId);
+        const label = document.getElementById(sliderId + '_val');
+        if (slider && label) {
+            let value = parseFloat(slider.value);
+            // Eğer slider ID'si ağırlık slider'larından biriyse yüzde olarak göster
+            if (sliderId.startsWith('sim_w')) { // Tüm ağırlık slider ID'leri 'sim_w' ile başlar
+                 label.textContent = (value * 100).toFixed(0) + '%';
+            } else {
+                 // Diğer slider'lar (varsa) normal değerini gösterir (bu örnekte yok)
+                 label.textContent = value.toFixed(2);
+            }
+        }
+    }
+    async function runSimulation() {
+    const simResultsList = document.getElementById('simResultsList');
+    simResultsList.innerHTML = '<p style="text-align:center; color:#0ea5a4;">Analiz motoru çalışıyor, lütfen bekleyin...</p>';
+
+    const simWeights = {
+        demand: parseFloat(document.getElementById('sim_wDemand').value),
+        land: parseFloat(document.getElementById('sim_wLand').value),
+        labor: parseFloat(document.getElementById('sim_wLabor').value),
+        infra: parseFloat(document.getElementById('sim_wInfra').value),
+        supplier: parseFloat(document.getElementById('sim_wSupplier').value),
+    };
+
+    const region = document.getElementById('sim_region').value;
+    const costChangePct = parseFloat(document.getElementById('sim_costChangePct').value);
+    const siteOverrides = {};
+    if (region && !isNaN(costChangePct)) {
+        siteOverrides.regionCostChange = { region: region, percentage: costChangePct };
+    }
+
+    try {
+        const payload = await fetchJson('/api/simulate_scoring', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ weights: simWeights, siteOverrides: siteOverrides })
+        });
+
+        if (!payload || !payload.results) throw new Error("Veri alınamadı.");
+
+        simResultsList.innerHTML = ''; // Temizle
+
+        payload.results.forEach(s => {
+            const el = document.createElement('div');
+            el.className = 'site-item';
+            
+            // "Rapora Ekle" butonuyla birlikte HTML içeriği
+            el.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <b style="color:#0ea5a4;">${s.name}</b><br>
+                        <span class="small">Maliyet: ${fmtTL(s.land_cost_per_m2)} | Altyapı: %${s.altyapi_endeksi}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="score" style="display:block; font-size:1.2rem; color:#ffdd57;">${s.score.toFixed(2)}</span>
+                        <button onclick="addToReport('${s.name.replace(/'/g, "\\'")}', ${s.score}, ${s.land_cost_per_m2})" 
+                                style="margin-top:5px; padding:3px 10px; font-size:11px; background:#0ea5a4; color:#000; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+                            ➕ Rapora Ekle
+                        </button>
+                    </div>
+                </div>
+            `;
+            simResultsList.appendChild(el);
+        });
+
+    } catch (error) {
+        console.error("Simülasyon Hatası:", error);
+        simResultsList.innerHTML = '<p style="text-align:center; color:#f43f5e;">Veritabanı bağlantısı veya hesaplama hatası oluştu!</p>';
+    }
+}
+
+    // Eventler
+    document.getElementById('runSiting').addEventListener('click', runSiting);
+    document.getElementById('refresh').addEventListener('click', loadAndRender);
+    document.getElementById('btnBackToList').addEventListener('click', showSitingList);
+    document.getElementById('runSimulation').addEventListener('click', runSimulation);
+
+    // Ana Yükleme
+    (async ()=> {
+      console.log("Sayfa yükleniyor...");
+      await loadAndRender(); // Önce genel veriler
+      await runSiting();     // Sonra ilk analiz (temel skorlar için)
+      // Simülasyon slider etiketlerini başlangıçta % olarak ayarla
+    console.log("Simülasyon etiketleri güncelleniyor...");
+    const simSliderIds = ['sim_wDemand', 'sim_wLand', 'sim_wLabor', 'sim_wInfra', 'sim_wSupplier'];
+    simSliderIds.forEach(sliderId => {
+        updateSliderLabel(sliderId); // Her slider için formatlama fonksiyonunu çağır
+    });
+    console.log("Simülasyon etiketleri güncellendi.");
+      console.log("İlk yükleme tamamlandı.");
+    })();
+    // --- FİLTRELEME MANTIĞI ---
+    async function applyFilters() {
+        const selectedCity = document.getElementById('cityFilter').value;
+        const selectedModel = document.getElementById('modelFilter').value;
+
+        try {
+            // 1. Bayileri ve KPI'ları yeniden yükle/filtrele
+            const dealers = await fetchJson('/api/dealers');
+            const kpiData = await fetchJson('/api/kpis');
+
+            // Haritadaki bayi katmanını temizle
+            dealerLayer.clearLayers();
+
+            const filteredDealers = dealers.filter(d => {
+                return selectedCity === "" || d.city === selectedCity;
+            });
+
+            // Filtrelenmiş bayileri haritaya ekle
+            filteredDealers.forEach(d => {
+                const marker = L.circleMarker([d.lat, d.lon], { 
+                    radius: 7, color: '#0ea5a4', fillOpacity: 0.8 
+                }).addTo(dealerLayer);
+                marker.bindPopup(`<b>${d.name}</b><br>${d.city}`);
+            });
+
+            // 2. KPI Panellerini Güncelle
+            if (selectedCity !== "" && kpiData.byCity) {
+                const cityKpi = kpiData.byCity.find(c => c.city === selectedCity);
+                if (cityKpi) {
+                    document.getElementById('kpiOrders').innerText = cityKpi.total_orders;
+                    document.getElementById('kpiDelay').innerText = cityKpi.avg_delay_minutes.toFixed(1);
+                    document.getElementById('kpiOnTime').innerText = cityKpi.on_time_rate.toFixed(1) + '%';
+                }
+            } else {
+                // Filtre yoksa genel toplamları göster
+                document.getElementById('kpiOrders').innerText = kpiData.overall.total_orders;
+                document.getElementById('kpiDelay').innerText = kpiData.overall.avg_delay.toFixed(1);
+                document.getElementById('kpiOnTime').innerText = kpiData.overall.on_time_rate + '%';
+            }
+
+            // 3. Şehir seçildiyse haritayı oraya odakla
+            if (selectedCity !== "" && filteredDealers.length > 0) {
+                map.flyTo([filteredDealers[0].lat, filteredDealers[0].lon], 9);
+            }
+
+        } catch (e) { console.error("Filtreleme hatası:", e); }
+    }
+
+    // Seçim kutularına olay dinleyicisi (Event Listener) ekle
+    document.getElementById('cityFilter').addEventListener('change', applyFilters);
+    document.getElementById('modelFilter').addEventListener('change', applyFilters);
+
+    // Araç modellerini veritabanından çekip select kutusuna doldur
+    async function fillModelFilter() {
+        try {
+            const models = await fetchJson('/api/vehicle_model');
+            const modelSelect = document.getElementById('modelFilter');
+            modelSelect.innerHTML = '<option value="">Tüm Modeller</option>';
+            models.forEach(m => {
+                modelSelect.innerHTML += `<option value="${m.model_name}">${m.model_name}</option>`;
+            });
+        } catch (e) { console.error("Modeller yüklenemedi"); }
+    }
+
+    // Sayfa açıldığında modelleri doldur
+    fillModelFilter();
+    async function applyFilters() {
+        const selectedCity = document.getElementById('cityFilter').value;
+        const selectedModel = document.getElementById('modelFilter').value;
+
+        try {
+            // Modeli API'ye gönderiyoruz
+            let kpiUrl = '/api/kpis';
+            if (selectedModel !== "") {
+                kpiUrl += `?model=${encodeURIComponent(selectedModel)}`;
+            }
+            
+            const kpiData = await fetchJson(kpiUrl);
+            const dealers = await fetchJson('/api/dealers');
+
+            // 1. KPI'ları Güncelle (Artık modele göre filtrelenmiş veri geliyor)
+            if (selectedCity !== "" && kpiData.byCity) {
+                const cityKpi = kpiData.byCity.find(c => c.city === selectedCity);
+                if (cityKpi) {
+                    document.getElementById('kpiOrders').innerText = cityKpi.total_orders;
+                    document.getElementById('kpiDelay').innerText = cityKpi.avg_delay_minutes.toFixed(1);
+                    document.getElementById('kpiOnTime').innerText = cityKpi.on_time_rate.toFixed(1) + '%';
+                } else {
+                    // Şehirde o modele ait sipariş yoksa sıfırla
+                    document.getElementById('kpiOrders').innerText = "0";
+                    document.getElementById('kpiDelay').innerText = "0";
+                    document.getElementById('kpiOnTime').innerText = "0%";
+                }
+            } else {
+                // Şehir seçili değilse, gelen genel toplamları (modele göre süzülmüş) göster
+                document.getElementById('kpiOrders').innerText = kpiData.overall.total_orders;
+                document.getElementById('kpiDelay').innerText = kpiData.overall.avg_delay.toFixed(1);
+                document.getElementById('kpiOnTime').innerText = kpiData.overall.on_time_rate + '%';
+            }
+
+            // 2. Haritayı Güncelle (Sadece şehir filtresi bazlı kalabilir veya modele göre bayi de süzülebilir)
+            dealerLayer.clearLayers();
+            const filteredDealers = dealers.filter(d => selectedCity === "" || d.city === selectedCity);
+            
+            filteredDealers.forEach(d => {
+                const marker = L.circleMarker([d.lat, d.lon], { radius: 7, color: '#0ea5a4', fillOpacity: 0.8 }).addTo(dealerLayer);
+                marker.bindPopup(`<b>${d.name}</b><br>${d.city}`);
+            });
+
+            if (selectedCity !== "" && filteredDealers.length > 0) {
+                map.flyTo([filteredDealers[0].lat, filteredDealers[0].lon], 9);
+            }
+
+        } catch (e) { console.error("Filtreleme hatası:", e); }
+    }
+    
+  </script>
+</body>
+</html>
