@@ -1,5 +1,5 @@
 // ============================================================
-//  BYD KDS — Operasyon & Fabrika Karar Destek Sistemi
+//  BYD KDS — Taktiksel & Stratejik Fabrika Karar Destek Sistemi
 //  ÇALIŞAN KODA SİMÜLASYON EKLENDİ + KARAKTER DÜZELTMELİ
 // ============================================================
 
@@ -17,10 +17,10 @@ app.use(express.static(__dirname));
 const DB = {
   host: "localhost",
   user: "root",
-  password: "@05okTRN.", // Şifreni kontrol et
+  password: "password", // Şifreni kontrol et
   database: "byd_kds_demo",
-  port: 3306,
-  charset: "utf8mb4" // BU ÇOK ÖNEMLİ
+  port: port,
+  charset: "utf8mb4" 
 };
 // ======================================
 
